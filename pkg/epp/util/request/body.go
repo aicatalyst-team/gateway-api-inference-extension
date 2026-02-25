@@ -29,6 +29,7 @@ const (
 	responsesAPI       = "responses"
 	chatCompletionsAPI = "chat/completions"
 	completionsAPI     = "completions"
+	embeddingsAPI      = "embeddings"
 )
 
 // getRequestPath extracts the request path from headers with fallback priority
@@ -66,6 +67,9 @@ func determineAPITypeFromPath(path string) string {
 	}
 	if strings.Contains(path, "/v1/completions") {
 		return completionsAPI
+	}
+	if strings.Contains(path, "/v1/embeddings") {
+		return embeddingsAPI
 	}
 
 	// Default to completions API for backward compatibility with existing clients and integration tests
@@ -113,6 +117,13 @@ func ExtractRequestBody(rawBody map[string]any, headers map[string]string) (*typ
 			return &types.LLMRequestBody{Completions: &completions}, nil
 		}
 		return nil, errutil.Error{Code: errutil.BadRequest, Msg: "invalid completions request: must have prompt field"}
+
+	case embeddingsAPI:
+		var embeddings types.EmbeddingsRequest
+		if err = json.Unmarshal(jsonBytes, &embeddings); err == nil && embeddings.Input != nil {
+			return &types.LLMRequestBody{Embeddings: &embeddings}, nil
+		}
+		return nil, errutil.Error{Code: errutil.BadRequest, Msg: "invalid embeddings request: must have input field"}
 
 	default:
 		return nil, errutil.Error{Code: errutil.BadRequest, Msg: "unsupported API endpoint"}
